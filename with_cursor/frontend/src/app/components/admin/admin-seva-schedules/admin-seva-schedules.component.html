@@ -1,0 +1,470 @@
+<div class="admin-schedules-container">
+  <!-- Header -->
+  <div class="admin-header">
+    <div class="header-left">
+      <h1>📅 Seva Schedules Management</h1>
+      <p>Manage schedules, view calendar, and track statistics</p>
+    </div>
+    <div class="header-right">
+      <button class="back-btn" (click)="navigateBack()">
+        <i class="fas fa-arrow-left"></i>
+        Back to Sevas
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Dashboard -->
+  <div class="statistics-section">
+    <h2>📊 Today's Overview</h2>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-content">
+          <h3>{{ statistics.todaySchedules }}</h3>
+          <p>Today's Schedules</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📆</div>
+        <div class="stat-content">
+          <h3>{{ statistics.monthSchedules }}</h3>
+          <p>This Month's Schedules</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎫</div>
+        <div class="stat-content">
+          <h3>{{ statistics.todayBookings }}</h3>
+          <p>Today's Bookings</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+          <h3>{{ statistics.monthBookings }}</h3>
+          <p>This Month's Bookings</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar Section -->
+  <div class="calendar-section">
+    <div class="calendar-header">
+      <h2>🗓️ Calendar View</h2>
+      <button class="add-schedule-btn" (click)="openAddModal()">
+        <i class="fas fa-plus"></i>
+        Add Schedule
+      </button>
+    </div>
+    
+    <div class="calendar-container">
+      <!-- Calendar Navigation -->
+      <div class="calendar-nav">
+        <button class="nav-btn" (click)="previousMonth()">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <h3>{{ currentDate | date:'MMMM yyyy' }}</h3>
+        <button class="nav-btn" (click)="nextMonth()">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <!-- Calendar Grid -->
+      <div class="calendar-grid">
+        <!-- Day Headers -->
+        <div class="calendar-day-header" *ngFor="let day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']">
+          {{ day }}
+        </div>
+
+        <!-- Calendar Days -->
+        <div 
+          class="calendar-day" 
+          *ngFor="let date of getCalendarDays()"
+          [class.other-month]="date.getMonth() !== currentDate.getMonth()"
+          [class.selected]="selectedDate && isSameDate(date, selectedDate)"
+          [class.has-events]="getSchedulesForDate(date).length > 0"
+          (click)="selectDate(date)"
+        >
+          <div class="day-number">{{ date.getDate() }}</div>
+          <!-- Event Count Badge -->
+          <div class="event-count" *ngIf="getSchedulesForDate(date).length > 0">
+            {{ getSchedulesForDate(date).length }}
+          </div>
+          <div class="day-events" *ngIf="getSchedulesForDate(date).length > 0">
+            <div class="event-dot" *ngFor="let schedule of getSchedulesForDate(date).slice(0, 2)">
+              <span class="event-tooltip">{{ getSevaName(schedule.seva_id) }}</span>
+            </div>
+            <div class="more-events" *ngIf="getSchedulesForDate(date).length > 2">
+              +{{ getSchedulesForDate(date).length - 2 }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Selected Date Events -->
+  <div class="events-section" *ngIf="selectedDate">
+    <div class="events-header">
+      <h2>📋 Events for {{ selectedDate | date:'EEEE, MMMM d, yyyy' }}</h2>
+      <button class="add-event-btn" (click)="openAddModal()">
+        <i class="fas fa-plus"></i>
+        Add Event
+      </button>
+    </div>
+
+    <div class="events-list" *ngIf="getSchedulesForDate(selectedDate).length > 0; else noEvents">
+      <div class="event-card" *ngFor="let schedule of getSchedulesForDate(selectedDate)">
+        <div class="event-header">
+          <h3>{{ getSevaName(schedule.seva_id) }}</h3>
+          <div class="event-status">
+            <span class="status-badge" [class]="schedule.is_active ? 'active' : 'inactive'">
+              {{ schedule.is_active ? 'Active' : 'Inactive' }}
+            </span>
+            <span class="status-badge" [class]="schedule.is_booked ? 'booked' : 'available'">
+              {{ schedule.is_booked ? 'Booked' : 'Available' }}
+            </span>
+          </div>
+        </div>
+        <div class="event-details">
+          <div class="detail-row">
+            <span class="detail-label">Time:</span>
+            <span class="detail-value">{{ schedule.start_time }} - {{ schedule.end_time }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Cost:</span>
+            <span class="detail-value">₹{{ schedule.effective_cost }}</span>
+          </div>
+          <div class="detail-row" *ngIf="schedule.max_participants">
+            <span class="detail-label">Max Participants:</span>
+            <span class="detail-value">{{ schedule.max_participants }}</span>
+          </div>
+        </div>
+        <div class="event-actions">
+          <button class="action-btn edit" (click)="openEditModal(schedule)">
+            <i class="fas fa-edit"></i>
+            Edit
+          </button>
+          <button class="action-btn delete" (click)="deleteSchedule(schedule)">
+            <i class="fas fa-trash"></i>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #noEvents>
+      <div class="no-events">
+        <p>No events scheduled for this date</p>
+        <button class="add-event-btn" (click)="openAddModal()">
+          <i class="fas fa-plus"></i>
+          Add First Event
+        </button>
+      </div>
+    </ng-template>
+  </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="modal-overlay" *ngIf="showAddModal" (click)="closeAddModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>➕ Add New Schedule</h2>
+      <button class="close-btn" (click)="closeAddModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <form [formGroup]="scheduleForm" (ngSubmit)="onSubmit()" class="schedule-form">
+      <div class="form-row">
+        <div class="form-field">
+          <label for="seva">Seva *</label>
+          <select id="seva" formControlName="seva_id" class="form-select">
+            <option value="">Select a seva ({{ sevas?.length || 0 }} available)</option>
+            <option *ngFor="let seva of sevas" [value]="seva.id">
+              {{ seva.name }} ({{ getSevaTypeLabel(seva.seva_type) }})
+            </option>
+          </select>
+          <div class="error-message" *ngIf="scheduleForm.get('seva_id')?.invalid && scheduleForm.get('seva_id')?.touched">
+            Please select a seva
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="date">Date *</label>
+          <input 
+            type="date" 
+            id="date" 
+            formControlName="date" 
+            class="form-input"
+          >
+          <div class="error-message" *ngIf="scheduleForm.get('date')?.invalid && scheduleForm.get('date')?.touched">
+            Date is required
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-field">
+          <label for="start_time">Start Time *</label>
+          <input 
+            type="time" 
+            id="start_time" 
+            formControlName="start_time" 
+            class="form-input"
+          >
+          <div class="error-message" *ngIf="scheduleForm.get('start_time')?.invalid && scheduleForm.get('start_time')?.touched">
+            Start time is required
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="end_time">End Time *</label>
+          <input 
+            type="time" 
+            id="end_time" 
+            formControlName="end_time" 
+            class="form-input"
+          >
+          <div class="error-message" *ngIf="scheduleForm.get('end_time')?.invalid && scheduleForm.get('end_time')?.touched">
+            End time is required
+          </div>
+        </div>
+      </div>
+
+      <!-- Override Fields -->
+      <div class="override-section">
+        <h3>🔄 Override Settings (Optional)</h3>
+        <p class="override-note">Leave blank to use base seva values</p>
+        
+        <div class="form-row">
+          <div class="form-field">
+            <label for="cost_override">Cost Override (₹)</label>
+            <input 
+              type="number" 
+              id="cost_override" 
+              formControlName="cost_override" 
+              placeholder="Leave blank for base cost"
+              class="form-input"
+              min="0"
+              step="0.01"
+            >
+          </div>
+          <div class="form-field">
+            <label for="max_participants">Max Participants</label>
+            <input 
+              type="number" 
+              id="max_participants" 
+              formControlName="max_participants" 
+              placeholder="Leave blank for unlimited"
+              class="form-input"
+              min="1"
+            >
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="temple_provides_override">Temple Provides Override</label>
+          <textarea 
+            id="temple_provides_override" 
+            formControlName="temple_provides_override" 
+            placeholder="Leave blank to use base seva temple provides"
+            class="form-textarea"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-field">
+          <label for="devotee_brings_override">Devotee Brings Override</label>
+          <textarea 
+            id="devotee_brings_override" 
+            formControlName="devotee_brings_override" 
+            placeholder="Leave blank to use base seva devotee brings"
+            class="form-textarea"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-field">
+          <label for="benefits_override">Benefits Override</label>
+          <textarea 
+            id="benefits_override" 
+            formControlName="benefits_override" 
+            placeholder="Leave blank to use base seva benefits"
+            class="form-textarea"
+            rows="3"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          class="btn-primary"
+          [disabled]="scheduleForm.invalid || isLoading"
+        >
+          <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+          <span *ngIf="!isLoading">Add Schedule</span>
+        </button>
+        <button 
+          type="button" 
+          class="btn-secondary"
+          (click)="closeAddModal()"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Schedule Modal -->
+<div class="modal-overlay" *ngIf="showEditModal" (click)="closeEditModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>✏️ Edit Schedule</h2>
+      <button class="close-btn" (click)="closeEditModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <form [formGroup]="scheduleForm" (ngSubmit)="onSubmit()" class="schedule-form">
+      <!-- Same form fields as Add Modal -->
+      <div class="form-row">
+        <div class="form-field">
+          <label for="seva">Seva *</label>
+          <select id="seva" formControlName="seva_id" class="form-select">
+            <option value="">Select a seva ({{ sevas?.length || 0 }} available)</option>
+            <option *ngFor="let seva of sevas" [value]="seva.id">
+              {{ seva.name }} ({{ getSevaTypeLabel(seva.seva_type) }})
+            </option>
+          </select>
+          <div class="error-message" *ngIf="scheduleForm.get('seva_id')?.invalid && scheduleForm.get('seva_id')?.touched">
+            Please select a seva
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="date">Date *</label>
+          <input 
+            type="date" 
+            id="date" 
+            formControlName="date" 
+            class="form-input"
+          >
+          <div class="error-message" *ngIf="scheduleForm.get('date')?.invalid && scheduleForm.get('date')?.touched">
+            Date is required
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-field">
+          <label for="start_time">Start Time *</label>
+          <input 
+            type="time" 
+            id="start_time" 
+            formControlName="start_time" 
+            class="form-input"
+          >
+          <div class="error-message" *ngIf="scheduleForm.get('start_time')?.invalid && scheduleForm.get('start_time')?.touched">
+            Start time is required
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="end_time">End Time *</label>
+          <input 
+            type="time" 
+            id="end_time" 
+            formControlName="end_time" 
+            class="form-input"
+          >
+          <div class="error-message" *ngIf="scheduleForm.get('end_time')?.invalid && scheduleForm.get('end_time')?.touched">
+            End time is required
+          </div>
+        </div>
+      </div>
+
+      <!-- Override Fields -->
+      <div class="override-section">
+        <h3>🔄 Override Settings (Optional)</h3>
+        <p class="override-note">Leave blank to use base seva values</p>
+        
+        <div class="form-row">
+          <div class="form-field">
+            <label for="cost_override">Cost Override (₹)</label>
+            <input 
+              type="number" 
+              id="cost_override" 
+              formControlName="cost_override" 
+              placeholder="Leave blank for base cost"
+              class="form-input"
+              min="0"
+              step="0.01"
+            >
+          </div>
+          <div class="form-field">
+            <label for="max_participants">Max Participants</label>
+            <input 
+              type="number" 
+              id="max_participants" 
+              formControlName="max_participants" 
+              placeholder="Leave blank for unlimited"
+              class="form-input"
+              min="1"
+            >
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="temple_provides_override">Temple Provides Override</label>
+          <textarea 
+            id="temple_provides_override" 
+            formControlName="temple_provides_override" 
+            placeholder="Leave blank to use base seva temple provides"
+            class="form-textarea"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-field">
+          <label for="devotee_brings_override">Devotee Brings Override</label>
+          <textarea 
+            id="devotee_brings_override" 
+            formControlName="devotee_brings_override" 
+            placeholder="Leave blank to use base seva devotee brings"
+            class="form-textarea"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-field">
+          <label for="benefits_override">Benefits Override</label>
+          <textarea 
+            id="benefits_override" 
+            formControlName="benefits_override" 
+            placeholder="Leave blank to use base seva benefits"
+            class="form-textarea"
+            rows="3"
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button 
+          type="submit" 
+          class="btn-primary"
+          [disabled]="scheduleForm.invalid || isLoading"
+        >
+          <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+          <span *ngIf="!isLoading">Update Schedule</span>
+        </button>
+        <button 
+          type="button" 
+          class="btn-secondary"
+          (click)="closeEditModal()"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: temple_postgres
+    environment:
+      POSTGRES_DB: temple_db
+      POSTGRES_USER: temple_user
+      POSTGRES_PASSWORD: temple_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - temple_network
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: temple_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - temple_network
+
+volumes:
+  postgres_data:
+
+networks:
+  temple_network:
+    driver: bridge
